@@ -15,7 +15,11 @@ RUN apt-get update -y \
     libnspr4 libnspr4-0d libnspr4-dev libcurl4-openssl-dev libicu-dev \
     openssl curl ca-certificates git pkg-config \
     apt-transport-https python wget \
-    python-sphinx texlive-base texinfo texlive-latex-extra texlive-fonts-recommended texlive-fonts-extra #needed to build the doc
+    python-sphinx texlive-base texinfo texlive-latex-extra texlive-fonts-recommended texlive-fonts-extra #needed to build the doc \
+
+RUN apt-get install ejabberd
+EXPOSE 5222
+EXPOSE 5269
 
 RUN wget http://packages.erlang-solutions.com/erlang/esl-erlang/FLAVOUR_1_general/esl-erlang_18.1-1~ubuntu~precise_amd64.deb
 RUN apt-get install -y --no-install-recommends openjdk-7-jdk
@@ -36,6 +40,19 @@ RUN curl -s https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
   && apt-get update -y && apt-get install -y nodejs \
   && npm install -g npm && npm install -g grunt-cli
 
+RUN groupadd -r tibet && useradd -d /usr/src/TIBET -g tibet tibet
+RUN mkdir -p /usr/src/TIBET
+COPY TIBET /usr/src/TIBET
+RUN mkdir -p /usr/src/hello
+COPY hello /usr/src/hello
+RUN cd /usr/src/TIBET \
+  && npm install . \
+  && npm link . \
+  && tibet build \
+  && cd ../hello \
+  && tibet init --link \
+EXPOSE 1407
+
 RUN cd /usr/src \
  && git clone https://github.com/cloudant/couchdb \
  && cd couchdb \
@@ -55,6 +72,7 @@ RUN apt-get -y install haproxy
 
 RUN apt-get install -y supervisor
 
+COPY tibet_app_start.conf /etc/supervisor/conf.d/tibet_app_start.conf
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 RUN mkdir -p /var/log/supervisor/ \
@@ -67,3 +85,4 @@ EXPOSE 5984
 WORKDIR /usr/src/couchdb
 
 ENTRYPOINT ["/usr/bin/supervisord"]
+
